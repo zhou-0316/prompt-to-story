@@ -4,10 +4,14 @@
 多模型生成大量情節 → LLM 分群歸納 → 使用者勾選 → 多模型生成完整故事（Markdown 輸出）
 
 [![Built with](https://img.shields.io/badge/Built%20with-Stima%20API-blueviolet?logo=robot)](https://api.stima.tech)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://prompt-to-storygit.streamlit.app/)
+
 
 </div>
 
 ---
+
+# 🎭 Story Generator Hub
 
 ## ✨ 核心功能
 
