@@ -26,11 +26,11 @@ with st.sidebar:
     if not available_models:
         st.error("❌ No models available")
         st.info("""
-        Please add your Stima API key in `.env` file:
+        Please add your Stima API key in Secrets:
         
-        ```
-        STIMA_API_KEY=your_key_here
-        ```
+        1. Click 'Manage app' (bottom right)
+        2. Go to Settings → Secrets
+        3. Add: STIMA_API_KEY = "your_key"
         
         Get your API key from:
         https://stima.tech
@@ -44,13 +44,21 @@ with st.sidebar:
     
     st.divider()
     
-    # API 狀態 - 使用新的方法
+    # API 狀態 - 簡化檢查方式
     st.subheader("📊 API Status")
-    if st.session_state.llm_manager.is_api_connected():
-        st.success("✅ Stima API Connected")
-    else:
-        st.error("❌ Stima API Not Connected")
-        st.info("Please check your API key")
+    # 檢查是否有 client 屬性且不為 None
+    try:
+        if hasattr(st.session_state.llm_manager, 'client') and st.session_state.llm_manager.client:
+            st.success("✅ Stima API Connected")
+        else:
+            st.error("❌ Stima API Not Connected")
+            st.info("Please check your API key")
+    except:
+        # 如果有任何錯誤，根據是否有可用模型來判斷
+        if available_models:
+            st.success("✅ API Connected")
+        else:
+            st.error("❌ API Not Connected")
     
 # 主要內容區
 tab1, tab2, tab3 = st.tabs(["📝 Generate Plots", "✅ Select Plots", "📖 Generate Story"])
