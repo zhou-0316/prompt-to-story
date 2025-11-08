@@ -50,5 +50,20 @@
 | **Railway** | $5/月 | ⭐⭐ 中等 | 生產環境 |
 | **Render** | 750小時/月 | ⭐⭐ 中等 | 生產環境 |
 
+### 🌟 方案 1: Streamlit Cloud（最推薦）
 
+> 訪問 https://streamlit.io/cloud
 
+1. 準備 GitHub Repository
+2. 前往 Streamlit Cloud
+  - 用 GitHub 登入
+  - 部署應用
+    - 點擊 New app
+    - 選擇你的 repository（貼上 .py 連結）
+    - 設定 Secrets
+      - 在 Secrets 區域添加：
+        ```python
+        YOURAPI_KEY = "sk-xxxxx"
+        STIMA_API_KEY = "stm-xxxxx"
+        ```
+    - 點擊 Deploy
