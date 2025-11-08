@@ -207,7 +207,6 @@ GOOGLE_AI_KEY=your_google_key
 
 - 專案連結：[https://github.com/yourusername/story-generator-hub](https://github.com/yourusername/story-generator-hub)
 - 問題回報：[https://github.com/yourusername/story-generator-hub/issues](https://github.com/yourusername/story-generator-hub/issues)
-```
 
 這兩個版本的 README 都包含了您專案的核心概念，並以專業的格式呈現。您可以根據實際的技術選擇和專案名稱進行調整。需要我協助您添加其他章節或調整內容嗎？
 
