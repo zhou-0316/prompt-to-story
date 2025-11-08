@@ -4,7 +4,6 @@ import random
 from utils.llm_manager import LLMManager
 from utils.story_processor import StoryProcessor
 
-
 # 初始化
 st.set_page_config(page_title="Story Generator Hub", layout="wide", page_icon="🎭")
 
@@ -45,9 +44,9 @@ with st.sidebar:
     
     st.divider()
     
-    # API 狀態
+    # API 狀態 - 使用新的方法
     st.subheader("📊 API Status")
-    if st.session_state.llm_manager.client:
+    if st.session_state.llm_manager.is_api_connected():
         st.success("✅ Stima API Connected")
     else:
         st.error("❌ Stima API Not Connected")
