@@ -4,6 +4,7 @@ import random
 from utils.llm_manager import LLMManager
 from utils.story_processor import StoryProcessor
 
+
 # 初始化
 st.set_page_config(page_title="Story Generator Hub", layout="wide", page_icon="🎭")
 
