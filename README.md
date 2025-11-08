@@ -1,7 +1,11 @@
+<div align="center">
+
 # 🧶 PlotWeaver
 多模型生成大量情節 → LLM 分群歸納 → 使用者勾選 → 多模型生成完整故事（Markdown 輸出）
 
 [![Built with](https://img.shields.io/badge/Built%20with-Stima%20API-blueviolet?logo=robot)](https://api.stima.tech)
+
+</div>
 
 ---
 
