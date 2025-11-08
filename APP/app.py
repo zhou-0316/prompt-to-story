@@ -26,34 +26,32 @@ with st.sidebar:
     if not available_models:
         st.error("❌ No models available")
         st.info("""
-        Please add your API keys in `.env` file:
-        - YOURAPI_KEY
-        - STIMA_API_KEY
+        Please add your Stima API key in `.env` file:
+        
+        ```
+        STIMA_API_KEY=your_key_here
+        ```
+        
+        Get your API key from:
+        https://stima.tech
         """)
     else:
         st.success(f"✅ {len(available_models)} models available")
         
-        with st.expander("View Available Models"):
+        with st.expander("📋 Available Models"):
             for model in available_models:
                 st.write(f"• {model['display_name']}")
     
     st.divider()
     
-    # API 資訊
+    # API 狀態
     st.subheader("📊 API Status")
-    col1, col2 = st.columns(2)
-    with col1:
-        if 'yourapi' in st.session_state.llm_manager.clients:
-            st.success("YourAPI ✓")
-        else:
-            st.error("YourAPI ✗")
+    if st.session_state.llm_manager.client:
+        st.success("✅ Stima API Connected")
+    else:
+        st.error("❌ Stima API Not Connected")
+        st.info("Please check your API key")
     
-    with col2:
-        if 'stima' in st.session_state.llm_manager.clients:
-            st.success("Stima ✓")
-        else:
-            st.error("Stima ✗")
-
 # 主要內容區
 tab1, tab2, tab3 = st.tabs(["📝 Generate Plots", "✅ Select Plots", "📖 Generate Story"])
 
