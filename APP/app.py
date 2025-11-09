@@ -5,7 +5,7 @@ from utils.llm_manager import LLMManager
 from utils.story_processor import StoryProcessor
 
 # 初始化
-st.set_page_config(page_title="Story Generator Hub", layout="wide", page_icon="🎭")
+st.set_page_config(page_title="PlotWeaver", layout="wide", page_icon="🎭")
 
 if 'llm_manager' not in st.session_state:
     st.session_state.llm_manager = LLMManager()
