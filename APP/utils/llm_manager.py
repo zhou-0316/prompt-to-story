@@ -219,58 +219,280 @@ class LLMManager:
             # 錯誤處理：返回錯誤訊息
             return f"Error with {config.display_name}: {str(e)}"
     
-    def generate_story(self, model_key: str, plot: str, style: str = "narrative") -> str:
-        """
-        根據情節生成完整故事
+def generate_story(self, model_key: str, plot: str, style: str = "narrative", length: str = "medium") -> str:
+    """
+    根據情節生成完整故事（標準版本）
+    
+    Args:
+        model_key (str): 模型的 key
+        plot (str): 故事情節
+        style (str): 故事風格（預設為 narrative）
+        length (str): 故事長度 ("short", "medium", "long")
         
-        Args:
-            model_key (str): 模型的 key
-            plot (str): 故事情節
-            style (str): 故事風格（預設為 narrative）
+    Returns:
+        str: 生成的完整故事，或錯誤訊息
+    """
+    # 檢查 API 連接狀態
+    if not self.is_api_connected():
+        return "Stima API not configured. Please check your API key."
+    
+    # 檢查模型是否存在
+    if model_key not in self.models:
+        return f"Model {model_key} not available"
+    
+    config = self.models[model_key]
+    
+    # 根據長度設定字數和 token 限制
+    length_settings = {
+        "short": {
+            "words": "500-800",
+            "max_tokens": 1500,
+            "description": "簡短精煉"
+        },
+        "medium": {
+            "words": "1000-1500", 
+            "max_tokens": 2500,
+            "description": "中等長度"
+        },
+        "long": {
+            "words": "1500-2500",
+            "max_tokens": 4000,
+            "description": "較長篇幅"
+        }
+    }
+    
+    setting = length_settings.get(length, length_settings["medium"])
+    
+    # 風格對應的中文描述
+    style_map = {
+        "narrative": "敘事",
+        "mystery": "懸疑",
+        "sci-fi": "科幻",
+        "fantasy": "奇幻",
+        "romance": "浪漫",
+        "thriller": "驚悚",
+        "comedy": "喜劇",
+        "drama": "戲劇",
+        "horror": "恐怖",
+        "adventure": "冒險"
+    }
+    
+    chinese_style = style_map.get(style.lower(), style)
+    
+    # 構建故事生成的提示詞
+    prompt = f"""根據以下情節：{plot}
+    
+    請以{chinese_style}風格撰寫一篇{setting['description']}的短篇故事。
+    
+    要求：
+    1. 字數約 {setting['words']} 字
+    2. 包含生動的場景描寫和細膩的心理刻畫
+    3. 角色性格鮮明，有適當的發展變化
+    4. 情節起承轉合，結構完整
+    5. 結局令人滿意，留有回味空間
+    
+    請使用繁體中文書寫，文筆流暢優美。
+    """
+    
+    try:
+        # 調用 OpenAI API 生成故事
+        response = self.client.chat.completions.create(
+            model=config.name,
+            messages=[
+                {
+                    "role": "system", 
+                    "content": f"您是一位專業的{chinese_style}小說作家，擅長用繁體中文創作引人入勝的故事。您的文筆細膩，善於營造氛圍，能夠讓讀者身臨其境。"
+                },
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ],
+            max_tokens=setting['max_tokens'],  # 根據長度動態設定
+            temperature=0.7,                   # 適中的創造性
+            top_p=0.9,                         # 增加多樣性
+            frequency_penalty=0.3,              # 減少重複
+            presence_penalty=0.3                # 鼓勵新話題
+        )
+        
+        story = response.choices[0].message.content
+        
+        # 檢查是否因 token 限制而被截斷
+        if response.choices[0].finish_reason == "length":
+            story += "\n\n[註：由於長度限制，故事可能未完整呈現]"
+        
+        return story
+        
+    except Exception as e:
+        return f"Error with {config.display_name}: {str(e)}"
+
+def generate_long_story(self, model_key: str, plot: str, style: str = "narrative", 
+                       progress_callback=None) -> str:
+    """
+    生成超長篇故事（透過分段生成，3000-8000字）
+    
+    Args:
+        model_key (str): 模型的 key
+        plot (str): 故事情節
+        style (str): 故事風格
+        progress_callback: 進度回調函數（用於更新UI）
+        
+    Returns:
+        str: 生成的長篇故事
+    """
+    # 檢查 API 連接狀態
+    if not self.is_api_connected():
+        return "Stima API not configured. Please check your API key."
+    
+    if model_key not in self.models:
+        return f"Model {model_key} not available"
+    
+    config = self.models[model_key]
+    
+    # 風格對應的中文描述
+    style_map = {
+        "narrative": "敘事",
+        "mystery": "懸疑",
+        "sci-fi": "科幻",
+        "fantasy": "奇幻",
+        "romance": "浪漫",
+        "thriller": "驚悚",
+        "comedy": "喜劇",
+        "drama": "戲劇",
+        "horror": "恐怖",
+        "adventure": "冒險"
+    }
+    
+    chinese_style = style_map.get(style.lower(), style)
+    
+    # 將故事分成四個部分生成
+    story_parts = []
+    part_names = ["起（開端）", "承（發展）", "轉（高潮）", "合（結局）"]
+    
+    # 定義每個部分的提示詞
+    prompts = [
+        # 第一部分：起
+        f"""根據情節：{plot}
+        
+        請撰寫一篇{chinese_style}風格長篇故事的第一部分【起】。
+        
+        這部分需要包含：
+        1. 故事背景的詳細介紹
+        2. 主要角色的登場和性格刻畫
+        3. 初始情況的建立
+        4. 引發故事的事件或衝突
+        
+        字數要求：1500-2000字
+        請使用繁體中文，文筆生動細膩。""",
+        
+        # 第二部分：承
+        f"""請延續前文，撰寫故事的第二部分【承】。
+        
+        這部分需要包含：
+        1. 情節的深入發展
+        2. 角色關係的變化
+        3. 衝突的逐步升級
+        4. 新的挑戰或發現
+        
+        字數要求：1500-2000字
+        保持{chinese_style}風格，繁體中文。""",
+        
+        # 第三部分：轉
+        f"""請延續前文，撰寫故事的第三部分【轉】。
+        
+        這部分需要包含：
+        1. 故事達到高潮
+        2. 關鍵的轉折點
+        3. 重大真相的揭露
+        4. 角色的重要決定
+        
+        字數要求：1500-2000字
+        保持{chinese_style}風格，繁體中文。""",
+        
+        # 第四部分：合
+        f"""請延續前文，撰寫故事的最後部分【合】。
+        
+        這部分需要包含：
+        1. 衝突的解決
+        2. 故事線的收束
+        3. 角色的成長或改變
+        4. 意味深長的結局
+        
+        字數要求：1500-2000字
+        保持{chinese_style}風格，繁體中文。"""
+    ]
+    
+    try:
+        context = ""  # 用於保存前文摘要
+        
+        for i, (prompt, part_name) in enumerate(zip(prompts, part_names)):
+            # 更新進度（如果有回調函數）
+            if progress_callback:
+                progress_callback(f"正在生成：{part_name}", (i + 1) / 4)
             
-        Returns:
-            str: 生成的完整故事，或錯誤訊息
-        """
-        # 檢查 API 連接狀態
-        if not self.is_api_connected():
-            return "Stima API not configured. Please check your API key."
-        
-        # 檢查模型是否存在
-        if model_key not in self.models:
-            return f"Model {model_key} not available"
-        
-        config = self.models[model_key]
-        
-        # 構建故事生成的提示詞
-        prompt = f"""根據以下情節：{plot}
-        
-        請以 {style} 風格撰寫一篇完整的短篇故事。
-        內容需引人入勝，字數約每個情節 3000 至 8000 字。
-        包含生動的場景描寫、角色發展及令人滿意的結局。
-        請使用繁體中文書寫。
-        """
-        
-        try:
-            # 調用 OpenAI API 生成故事
+            # 為後續部分添加前文摘要
+            if i > 0 and context:
+                full_prompt = f"""前文摘要：
+{context}
+
+{prompt}"""
+            else:
+                full_prompt = prompt
+            
+            # 生成當前部分
             response = self.client.chat.completions.create(
                 model=config.name,
                 messages=[
                     {
                         "role": "system", 
-                        "content": f"您是一位技藝精湛的 {style} 風格故事創作者。請用繁體中文創作引人入勝、令人沉浸其中的故事。"
+                        "content": f"""您是一位專業的{chinese_style}長篇小說作家。
+您擅長創作結構完整、情節緊湊的故事。
+請確保每個部分都與前文緊密銜接，保持風格一致。"""
                     },
                     {
                         "role": "user", 
-                        "content": prompt
+                        "content": full_prompt
                     }
                 ],
-                max_tokens=50000,    # 較長的輸出限制
-                temperature=0.7     # 適中的創造性（平衡創意和連貫性）
+                max_tokens=3000,        # 每部分的最大 token 數
+                temperature=0.7,
+                top_p=0.9,
+                frequency_penalty=0.3,
+                presence_penalty=0.3
             )
             
-            return response.choices[0].message.content
+            part_content = response.choices[0].message.content
+            story_parts.append(f"\n\n【{part_name}】\n\n{part_content}")
             
-        except Exception as e:
-            return f"Error with {config.display_name}: {str(e)}"
+            # 生成當前部分的摘要作為下一部分的上下文
+            if i < 3:  # 不是最後一部分
+                summary_response = self.client.chat.completions.create(
+                    model=config.name,
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": "請簡要總結故事內容，保留關鍵情節和角色狀態，約100-150字。"
+                        },
+                        {
+                            "role": "user", 
+                            "content": f"請總結以下內容：\n{part_content}"
+                        }
+                    ],
+                    max_tokens=300,
+                    temperature=0.3
+                )
+                context = summary_response.choices[0].message.content
+        
+        # 合併所有部分
+        full_story = "".join(story_parts)
+        
+        # 添加字數統計
+        word_count = len(full_story.replace(" ", "").replace("\n", ""))
+        full_story = f"【故事全文】（共 {word_count} 字）\n{full_story}"
+        
+        return full_story
+        
+    except Exception as e:
+        return f"Error generating long story with {config.display_name}: {str(e)}"
     
     def cluster_plots_with_ai(self, plots: List[Dict[str, 
