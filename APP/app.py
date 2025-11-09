@@ -252,105 +252,136 @@ with tab3:
         
         st.divider()
         
+        # ========== 生成模式選擇 ==========
+        generation_mode = st.radio(
+            "選擇生成模式 Generation Mode:",
+            options=["標準模式 Standard", "長篇模式 Extended"],
+            horizontal=True,
+            help="標準模式：500-2500字 | 長篇模式：3000-8000字（分段生成）"
+        )
+        
         col1, col2 = st.columns([2, 1])
         
         with col1:
             # 選擇用於生成故事的模型
             if available_models:
-                # 創建模型選項字典
                 story_model_options = {model['display_name']: model['key'] 
                                      for model in available_models}
                 
-                # 多選框：選擇生成故事的模型（最多3個）
+                # 根據模式調整可選模型數量
+                max_models = 3 if generation_mode == "標準模式 Standard" else 1
+                
                 selected_story_displays = st.multiselect(
-                    "Select models for story generation (max 3):",
+                    f"Select models for story generation (max {max_models}):",
                     list(story_model_options.keys()),
-                    default=list(story_model_options.keys())[:min(2, len(story_model_options))],
-                    max_selections=3
+                    default=list(story_model_options.keys())[:min(1, len(story_model_options))],
+                    max_selections=max_models
                 )
                 
-                # 轉換為實際的模型 keys
                 story_models = [story_model_options[name] for name in selected_story_displays]
             
             # 故事風格選擇
             story_style = st.selectbox(
-                "Story style:",
-                ["Narrative", "Mystery", "Sci-Fi", "Fantasy", "Romance", 
-                 "Thriller", "Comedy", "Drama", "Horror", "Adventure"]
+                "Story style 故事風格:",
+                ["Narrative 敘事", "Mystery 懸疑", "Sci-Fi 科幻", 
+                 "Fantasy 奇幻", "Romance 浪漫", "Thriller 驚悚", 
+                 "Comedy 喜劇", "Drama 戲劇", "Horror 恐怖", "Adventure 冒險"]
             )
+            # 提取英文風格名稱
+            style_english = story_style.split()[0].lower()
             
-            # 故事長度選擇
-            story_length = st.select_slider(
-                "Story length:",
-                options=["Short (500 words)", "Medium (1000 words)", "Long (1500 words)"],
-                value="Medium (1000 words)"
-            )
+            # 標準模式的長度選擇
+            if generation_mode == "標準模式 Standard":
+                story_length = st.select_slider(
+                    "Story length 故事長度:",
+                    options=["Short 短篇 (500-800字)", 
+                            "Medium 中篇 (1000-1500字)", 
+                            "Long 長篇 (1500-2500字)"],
+                    value="Medium 中篇 (1000-1500字)"
+                )
+                # 提取長度類型
+                if "Short" in story_length:
+                    length_type = "short"
+                elif "Long" in story_length:
+                    length_type = "long"
+                else:
+                    length_type = "medium"
+            else:
+                st.info("長篇模式將生成 3000-8000 字的完整故事，分為起承轉合四個部分。")
         
         with col2:
-            # 顯示生成提示
-            st.info("""
-            **📖 Story Generation:**
-            - Multiple models create different versions
-            - Each brings unique perspective
-            - Export as Markdown files
-            """)
+            if generation_mode == "標準模式 Standard":
+                st.info("""
+                **📖 標準模式：**
+                - 多個模型同時生成
+                - 快速生成
+                - 適合短中篇故事
+                - 可下載為 Markdown
+                """)
+            else:
+                st.info("""
+                **📚 長篇模式：**
+                - 單一模型分段生成
+                - 起承轉合四部分
+                - 3000-8000字長篇
+                - 保持情節連貫性
+                """)
         
-        # ========== 生成故事按鈕和處理邏輯 ==========
+        # ========== 生成故事按鈕 ==========
         if st.button("✨ Generate Stories", type="primary"):
-            with st.spinner("Creating your stories..."):
-                # 合併所有選定的情節
-                combined_plots = "\n".join([f"- {p['plot']}" for p in st.session_state.selected_plots])
-                
-                stories = []  # 儲存生成的故事
-                progress = st.progress(0)  # 進度條
-                
-                # 使用每個選定的模型生成故事
-                for idx, model_key in enumerate(story_models):
-                    progress.progress((idx + 1) / len(story_models))
+            # 合併所有選定的情節
+            combined_plots = "\n".join([f"- {p['plot']}" for p in st.session_state.selected_plots])
+            
+            if generation_mode == "標準模式 Standard":
+                # ===== 標準模式生成 =====
+                with st.spinner("Creating your stories..."):
+                    stories = []
+                    progress = st.progress(0)
                     
-                    # 獲取模型名稱
-                    model_name = next(m['display_name'] for m in available_models 
-                                     if m['key'] == model_key)
-                    
-                    st.info(f"Generating story with {model_name}...")
-                    
-                    # 調用 LLM 生成故事
-                    story = st.session_state.llm_manager.generate_story(
-                        model_key, combined_plots, story_style.lower()
-                    )
-                    
-                    # 儲存故事和相關元數據
-                    stories.append({
-                        'model': model_name,
-                        'story': story,
-                        'metadata': {
-                            'title': f"{story_style} Story",
+                    for idx, model_key in enumerate(story_models):
+                        progress.progress((idx + 1) / len(story_models))
+                        
+                        model_name = next(m['display_name'] for m in available_models 
+                                        if m['key'] == model_key)
+                        
+                        st.info(f"Generating story with {model_name}...")
+                        
+                        # 調用標準生成方法
+                        story = st.session_state.llm_manager.generate_story(
+                            model_key, combined_plots, style_english, length_type
+                        )
+                        
+                        stories.append({
                             'model': model_name,
-                            'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
-                            'style': story_style,
-                            'based_on_plots': len(st.session_state.selected_plots)
-                        }
-                    })
-                
-                progress.empty()  # 清除進度條
-                st.success("✅ Stories generated successfully!")
-                
-                # ========== 顯示生成的故事 ==========
-                for story_data in stories:
-                    st.divider()
+                            'story': story,
+                            'metadata': {
+                                'title': f"{story_style.split()[0]} Story",
+                                'model': model_name,
+                                'date': datetime.now().strftime("%Y-%m-%d %H:%M"),
+                                'style': story_style,
+                                'length': story_length,
+                                'based_on_plots': len(st.session_state.selected_plots)
+                            }
+                        })
                     
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        # 故事標題
-                        st.subheader(f"📖 {story_data['metadata']['title']} by {story_data['model']}")
+                    progress.empty()
+                    st.success("✅ Stories generated successfully!")
                     
-                    with col2:
-                        # 準備 Markdown 格式的內容供下載
-                        markdown_content = f"""# {story_data['metadata']['title']}
+                    # 顯示生成的故事
+                    for story_data in stories:
+                        st.divider()
+                        
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            st.subheader(f"📖 {story_data['metadata']['title']} by {story_data['model']}")
+                        
+                        with col2:
+                            markdown_content = f"""# {story_data['metadata']['title']}
 
 **Generated by:** {story_data['metadata']['model']}  
 **Date:** {story_data['metadata']['date']}  
 **Style:** {story_data['metadata']['style']}  
+**Length:** {story_data['metadata']['length']}  
 **Based on:** {story_data['metadata']['based_on_plots']} selected plots  
 
 ---
@@ -359,30 +390,94 @@ with tab3:
 
 ---
 
-*This story was generated using AI through Story Generator Hub.*  
-*Powered by YourAPI & Stima API*
+*Generated by PlotWeaver*  
+*Powered by Stima API*
+"""
+                            
+                            st.download_button(
+                                label=f"📥 Download",
+                                data=markdown_content,
+                                file_name=f"story_{style_english}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                                mime="text/markdown",
+                                key=f"download_{story_data['model']}_{idx}"
+                            )
+                        
+                        with st.container():
+                            st.markdown(story_data['story'])
+            
+            else:
+                # ===== 長篇模式生成 =====
+                if len(story_models) > 0:
+                    model_key = story_models[0]
+                    model_name = next(m['display_name'] for m in available_models 
+                                    if m['key'] == model_key)
+                    
+                    # 創建進度容器
+                    progress_container = st.container()
+                    with progress_container:
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        # 定義進度回調函數
+                        def update_progress(message, progress):
+                            status_text.text(message)
+                            progress_bar.progress(progress)
+                        
+                        # 調用長篇生成方法
+                        long_story = st.session_state.llm_manager.generate_long_story(
+                            model_key, 
+                            combined_plots, 
+                            style_english,
+                            progress_callback=update_progress
+                        )
+                        
+                        progress_bar.empty()
+                        status_text.empty()
+                    
+                    st.success("✅ Long story generated successfully!")
+                    
+                    # 顯示長篇故事
+                    st.divider()
+                    
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.subheader(f"📚 Extended {story_style.split()[0]} Story by {model_name}")
+                    
+                    with col2:
+                        markdown_content = f"""# Extended {story_style.split()[0]} Story
+
+**Generated by:** {model_name}  
+**Date:** {datetime.now().strftime("%Y-%m-%d %H:%M")}  
+**Style:** {story_style}  
+**Type:** Extended (3000-8000 words)  
+**Based on:** {len(st.session_state.selected_plots)} selected plots  
+
+---
+
+{long_story}
+
+---
+
+*Generated by PlotWeaver - Extended Mode*  
+*Powered by Stima API*
 """
                         
-                        # 下載按鈕
                         st.download_button(
-                            label=f"📥 Download",
+                            label=f"📥 Download Extended",
                             data=markdown_content,
-                            file_name=f"story_{story_data['metadata']['style'].lower()}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                            mime="text/markdown",
-                            key=f"download_{story_data['model']}_{idx}"
+                            file_name=f"extended_story_{style_english}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                            mime="text/markdown"
                         )
                     
-                    # 顯示故事內容
                     with st.container():
-                        st.markdown(story_data['story'])
-                    
+                        st.markdown(long_story)
+                else:
+                    st.error("請至少選擇一個模型")
+    
     else:
-        # 沒有選擇情節時的提示
         st.info("✋ Please select plots in Tab 2 first")
         
-        # 提供快速開始選項
         if st.session_state.generated_plots:
             if st.button("🚀 Quick Start - Select All Plots"):
-                # 選擇所有已生成的情節
                 st.session_state.selected_plots = st.session_state.generated_plots.copy()
                 st.rerun()
