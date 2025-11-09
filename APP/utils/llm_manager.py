@@ -201,14 +201,14 @@ class LLMManager:
                 messages=[
                     {
                         "role": "system", 
-                        "content": "You are a creative story writer. Create unique and engaging story plots in Traditional Chinese."
+                        "content": "您是一位富有創意的故事作家。請用繁體中文創作出獨特且引人入勝的故事情節。"
                     },
                     {
                         "role": "user", 
                         "content": prompt
                     }
                 ],
-                max_tokens=300,     # 限制輸出長度（約 150-200 字）
+                max_tokens=3000,     # 限制輸出長度（約 150-200 字）
                 temperature=0.8     # 創造性程度（0.8 表示較高創造性）
             )
             
@@ -242,12 +242,12 @@ class LLMManager:
         config = self.models[model_key]
         
         # 構建故事生成的提示詞
-        prompt = f"""Based on this plot: {plot}
+        prompt = f"""根據以下情節：{plot}
         
-        Write a complete short story in {style} style.
-        Make it engaging and approximately 500-800 words.
-        Include vivid descriptions, character development, and a satisfying conclusion.
-        Write in Traditional Chinese.
+        請以 {style} 風格撰寫一篇完整的短篇故事。
+        內容需引人入勝，字數約每個情節 3000 至 8000 字。
+        包含生動的場景描寫、角色發展及令人滿意的結局。
+        請使用繁體中文書寫。
         """
         
         try:
@@ -257,14 +257,14 @@ class LLMManager:
                 messages=[
                     {
                         "role": "system", 
-                        "content": f"You are a skilled {style} story writer. Create immersive and captivating stories in Traditional Chinese."
+                        "content": f"您是一位技藝精湛的 {style} 風格故事創作者。請用繁體中文創作引人入勝、令人沉浸其中的故事。"
                     },
                     {
                         "role": "user", 
                         "content": prompt
                     }
                 ],
-                max_tokens=2000,    # 較長的輸出限制（約 1000-1500 字）
+                max_tokens=50000,    # 較長的輸出限制
                 temperature=0.7     # 適中的創造性（平衡創意和連貫性）
             )
             
